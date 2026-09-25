@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive"><title>SVR-01 review</title>
+<style>
+body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f4f3f0; color: #0b0b0b; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+.box { background: #fff; border: 2px solid #0b0b0b; padding: 26px 28px; width: min(420px, 92vw); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+h1 { font-size: 17px; margin: 0 0 4px; } .s { color: #52514e; font-size: 12.5px; margin-bottom: 18px; }
+label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+input { width: 100%; box-sizing: border-box; font: 15px 'Segoe UI', Arial; padding: 9px 10px; border: 1px solid #999; border-radius: 4px; }
+button { margin-top: 12px; width: 100%; font: 700 14px 'Segoe UI', Arial; padding: 10px; background: #1a4fa0; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+button:disabled { background: #9aa8c4; }
+.m { font-size: 12px; color: #b00020; margin-top: 10px; min-height: 16px; } .cls { margin-top: 18px; font-size: 10.5px; color: #b00020; font-weight: 700; letter-spacing: .06em; text-align: center; }
+</style></head><body>
+<form class="box" id="f"><h1>Site visit report SVR-01 — draft for review</h1>
+<div class="s">Controlled document of HPPTCL. The page is stored encrypted and is opened in your browser with the password you have been given.</div>
+<label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" autofocus>
+<button id="go" type="submit">Open</button><div class="m" id="m"></div>
+<div class="cls">CONFIDENTIAL — NOT TO BE COPIED OR CIRCULATED</div></form>
+<script>
+(function(){
+var f = document.getElementById('f'), m = document.getElementById('m'), go = document.getElementById('go');
+var blobP = fetch('svr.bin', {cache: 'no-store'}).then(function(r){ if (!r.ok) throw new Error('page not found'); return r.arrayBuffer(); });
+function b(u, s, e){ return u.slice(s, e); }
+f.addEventListener('submit', function(ev){
+  ev.preventDefault(); var pw = document.getElementById('pw').value; if (!pw) return;
+  go.disabled = true; m.style.color = '#52514e'; m.textContent = 'loading…';
+  blobP.then(function(buf){
+    var u = new Uint8Array(buf); var magic = String.fromCharCode.apply(null, u.subarray(0, 4)); if (magic !== 'SVR1') throw new Error('bad file');
+    var salt = u.subarray(4, 20), iv = u.subarray(20, 32), ct = u.subarray(32);
+    m.textContent = 'opening…';
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']).then(function(k){
+      return crypto.subtle.deriveKey({name:'PBKDF2', salt: salt, iterations: 250000, hash:'SHA-256'}, k, {name:'AES-GCM', length:256}, false, ['decrypt']);
+    }).then(function(key){ return crypto.subtle.decrypt({name:'AES-GCM', iv: iv}, key, ct); });
+  }).then(function(pt){
+    var html = new TextDecoder('utf-8').decode(pt);
+    document.open(); document.write(html); document.close();
+  }).catch(function(e){ go.disabled = false; m.style.color = '#b00020'; m.textContent = (String(e).indexOf('OperationError') >= 0 || e.name === 'OperationError') ? 'Wrong password.' : 'Could not open: ' + e.message; });
+});
+})();
+</script></body></html>
